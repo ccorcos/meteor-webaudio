@@ -3,6 +3,11 @@
 </body>
 
 <template name="main">
-  <input id="microphone" type="button" value="microphone">
+  <div class="wrapper">
+    {{>spectogram}}
+  </div>
+</template>
+
+<template name="spectogram">
   <canvas id="waterfall" width="1024" height="256"></canvas>
 </template>

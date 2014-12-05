@@ -1,4 +1,7 @@
 
+Template.main.rendered = ->
+  Spectogram('waterfall')
+
 
 
 navigator.getUserMedia = navigator.getUserMedia or
@@ -14,26 +17,8 @@ window.requestAnimationFrame = window.requestAnimationFrame or
 
 
 
-error = (e) ->
-  alert e
 
-Template.main.events
-  'click #microphone': (e,t) ->
-    navigator.getUserMedia {audio: true}, t.initAudio, error
-
-  # monitor
-  # 'click #start': (e,t) ->
-  #   t.sourceNode.connect t.context.destination
-  #
-  # 'click #stop': (e,t) ->
-  #   t.sourceNode.disconnect()
-  #   t.sourceNode.connect t.filterNode
-
-
-
-Template.main.rendered = ->
-  t = @
-
+Spectogram = (canvasId) ->
   # hot = new chroma.scale
   #   #colors: ['#5C4D6B', '#536887', '#3D839A', '#259FA1', '#35B89B', '#67CF8A', '#A3E275', '#E7F065' ]
   #   #colors: ['#5C4D6B', '#3F627B', '#1C757A', '#2A8569', '#5B8F4F', '#91933B', '#C89140', '#F78B65' ]
@@ -45,7 +30,9 @@ Template.main.rendered = ->
   #   limits:[0, 300]
 
   # get the context from the canvas to draw on
-  ctx = $("#waterfall").get()[0].getContext("2d")
+  canvasElement = $("#" + canvasId)
+
+  ctx = canvasElement.get()[0].getContext("2d")
 
   # create a temp canvas we use for copying
   tempCanvas = document.createElement("canvas")
@@ -68,11 +55,9 @@ Template.main.rendered = ->
 
   initAudio = (stream) ->
     context = new AudioContext()
-    t.context = context
 
     # Create an AudioNode from the stream (live input)
     sourceNode = context.createMediaStreamSource(stream)
-    t.sourceNode = sourceNode
 
     # Filter the audio to limit bandwidth to 4kHz before resampling,
     # by using a BiQuadFilterNode:
@@ -81,7 +66,6 @@ Template.main.rendered = ->
     filterNode.frequency.value = 3800
     filterNode.Q.value = 1.5
     filterNode.gain.value = 0
-    t.filterNode = filterNode
 
     sourceNode.connect(filterNode)
 
@@ -124,8 +108,6 @@ Template.main.rendered = ->
 
     # analyser.connect(context.destination)
 
-  t.initAudio = initAudio
-
   drawSpectrogram = ->
     # The analyzer is in constant underrun because it assumes
     # we have a 44.1kHz sample rate, and we downsampled 5 times to
@@ -156,4 +138,10 @@ Template.main.rendered = ->
     # draw the copied image
     ctx.drawImage(tempCanvas, 0, 0, 1024, 256, 0, 1, 1024, 256)
 
-  t.drawSpectrogram = drawSpectrogram
+  started = false
+  canvasElement.addClass 'start'
+  canvasElement.on 'click', (e) ->
+    unless started
+      started = true
+      canvasElement.removeClass 'start'
+      navigator.getUserMedia {audio: true}, initAudio, alert

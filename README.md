@@ -1,3 +1,9 @@
+look back at the original implementation. Simplify it to a package so I can
+just initialize it with meteor. start and stop functionality.
+initialization parameters. then I can use on my personal website or anywhere
+else. and still make a meteor package ;)
+
+
 click to enable microphone with icon
 or ask immediate on rendered
 resize and make 100% inside a wrapper

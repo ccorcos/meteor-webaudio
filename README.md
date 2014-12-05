@@ -1,18 +1,29 @@
-look back at the original implementation. Simplify it to a package so I can
-just initialize it with meteor. start and stop functionality.
-initialization parameters. then I can use on my personal website or anywhere
-else. and still make a meteor package ;)
 
+turn on turn off, cordova integration for iOS
 
-click to enable microphone with icon
-or ask immediate on rendered
-resize and make 100% inside a wrapper
+separate code
+see how it works. how to change sample rate and other things about it. comment the code
+start overlay
+stop?
+
+make an equalizer
 set the frequency range, sample rate
 make it a fun a meteor package
+
 overlay a guitar to make it a guitar tuner
+
 play pink noise got a room tuner.
-display eq style instead of waterfall as an option
+
+
 color option.
+
+options:
+ color
+ canvas id
+ frequency range
+ sample rate
+ speed
+ equalizer
 
 
 http://www.aerodynes.fr/2014/04/14/a-pure-javascript-audio-waterfall/

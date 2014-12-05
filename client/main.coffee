@@ -15,9 +15,6 @@ window.requestAnimationFrame = window.requestAnimationFrame or
                          window.msRequestAnimationFrame
 
 
-
-
-
 Spectogram = (canvasId) ->
   # hot = new chroma.scale
   #   #colors: ['#5C4D6B', '#536887', '#3D839A', '#259FA1', '#35B89B', '#67CF8A', '#A3E275', '#E7F065' ]
@@ -31,6 +28,8 @@ Spectogram = (canvasId) ->
 
   # get the context from the canvas to draw on
   canvasElement = $("#" + canvasId)
+  overlayElement = $("#" + canvasId + "-overlay")
+
 
   ctx = canvasElement.get()[0].getContext("2d")
 
@@ -138,10 +137,23 @@ Spectogram = (canvasId) ->
     # draw the copied image
     ctx.drawImage(tempCanvas, 0, 0, 1024, 256, 0, 1, 1024, 256)
 
+
   started = false
-  canvasElement.addClass 'start'
+  microphoneError = (event) ->
+    console.log event
+    if event.name is "PermissionDeniedError"
+      alert "This app requires a microphone as input. Please adjust your privacy settings."
+
+  microphoneSuccess = (stream) ->
+    started = true
+    overlayElement.css 'opacity', '0'
+    initAudio(stream)
+
   canvasElement.on 'click', (e) ->
-    unless started
-      started = true
-      canvasElement.removeClass 'start'
-      navigator.getUserMedia {audio: true}, initAudio, alert
+    if started
+      console.log "stop"
+    else
+      if navigator.getUserMedia
+        navigator.getUserMedia {audio: true}, microphoneSuccess, microphoneError
+      else
+        alert "This app requires a microphone as input. Please try using Chrome or Firefox."

@@ -1,29 +1,28 @@
 
-turn on turn off, cordova integration for iOS
-
+turn on turn off
 separate code
-see how it works. how to change sample rate and other things about it. comment the code
-start overlay
-stop?
+
+
+cordova integration for iOS
+
+how to change sample rate and frequency range.
+stop with another tap.
+
 
 make an equalizer
-set the frequency range, sample rate
-make it a fun a meteor package
 
 overlay a guitar to make it a guitar tuner
 
 play pink noise got a room tuner.
 
 
+
 color option.
 
 options:
- color
- canvas id
  frequency range
- sample rate
  speed
- equalizer
+ don't stop with no volume!
 
 
 http://www.aerodynes.fr/2014/04/14/a-pure-javascript-audio-waterfall/

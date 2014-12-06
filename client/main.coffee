@@ -1,6 +1,6 @@
 
 Template.main.rendered = ->
-  Spectogram('waterfall')
+  @spectogram = Spectogram('waterfall')
 
 
 
@@ -16,15 +16,13 @@ window.requestAnimationFrame = window.requestAnimationFrame or
 
 
 Spectogram = (canvasId) ->
-  # hot = new chroma.scale
-  #   #colors: ['#5C4D6B', '#536887', '#3D839A', '#259FA1', '#35B89B', '#67CF8A', '#A3E275', '#E7F065' ]
-  #   #colors: ['#5C4D6B', '#3F627B', '#1C757A', '#2A8569', '#5B8F4F', '#91933B', '#C89140', '#F78B65' ]
-  #   colors: [ '#000000', '#0B16B5', '#FFF782', '#EB1250' ]
-  #   # colors:['#000000', '#ff0000', '#ffff00', '#ffffff']
-  #   # positions:[0, .125, 0.25, 0.375, 0.5, 0.625, 0.75, 1]
-  #   positions: [ 0, 0.4, 0.68, 0.85 ]
-  #   mode:'rgb'
-  #   limits:[0, 300]
+
+  obj = {}
+
+  hot = chroma.scale ['#000000', '#0B16B5', '#FFF782', '#EB1250'],
+                     [0,          0.4,       0.68,          0.85]
+          .mode 'rgb'
+          .domain [0, 300]
 
   # get the context from the canvas to draw on
   canvasElement = $("#" + canvasId)
@@ -54,10 +52,11 @@ Spectogram = (canvasId) ->
 
   initAudio = (stream) ->
     context = new AudioContext()
+    obj.context = context
 
     # Create an AudioNode from the stream (live input)
     sourceNode = context.createMediaStreamSource(stream)
-
+    obj.sourceNode = sourceNode
     # Filter the audio to limit bandwidth to 4kHz before resampling,
     # by using a BiQuadFilterNode:
     filterNode = context.createBiquadFilter()
@@ -65,6 +64,7 @@ Spectogram = (canvasId) ->
     filterNode.frequency.value = 3800
     filterNode.Q.value = 1.5
     filterNode.gain.value = 0
+    obj.filterNode = filterNode
 
     sourceNode.connect(filterNode)
 
@@ -105,7 +105,19 @@ Spectogram = (canvasId) ->
 
     syncDisplay.connect(context.destination)
 
-    # analyser.connect(context.destination)
+
+  # monitoring = false
+  # obj.monitor = (turnOn) ->
+  #   if turnOn
+  #     if not monitoring
+  #       obj.sourceNode.connect obj.context.destination
+  #       monitoring = not monitoring
+  #   else
+  #     if monitoring
+  #       obj.sourceNode.disconnect()
+  #       obj.sourceNode.connect obj.filterNode
+  #       monitoring = not monitoring
+
 
   drawSpectrogram = ->
     # The analyzer is in constant underrun because it assumes
@@ -129,8 +141,8 @@ Spectogram = (canvasId) ->
     for i in [0...array.length]
       # draw each pixel with the specific color
       value = array[i]
-      ctx.fillStyle = chroma.scales.hot()(value/300).hex()
-      # ctx.fillStyle = hot.getColor(value).hex()
+      # ctx.fillStyle = chroma.scales.hot()(value/300).hex()
+      ctx.fillStyle = hot(value).hex()
       # draw the line on top of the canvas
       ctx.fillRect(i, 1, 1, 1)
 
@@ -157,3 +169,5 @@ Spectogram = (canvasId) ->
         navigator.getUserMedia {audio: true}, microphoneSuccess, microphoneError
       else
         alert "This app requires a microphone as input. Please try using Chrome or Firefox."
+
+  return obj

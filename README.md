@@ -1,32 +1,20 @@
 
-goes up to 4.41 kHz
+change sample rate for guitar range with better resolution.
+make an equalizer
 
-turn on turn off
-separate code
 
+spectogram apps:
+- simple visualizer
+- guitar tuner
+
+equalizer apps:
+- pink noise room tuner
 
 cordova integration for iOS
 
-how to change sample rate and frequency range.
-stop with another tap.
 
 
-make an equalizer
-
-overlay a guitar to make it a guitar tuner
-
-play pink noise got a room tuner.
-
-
-
-color option.
-
-options:
- frequency range
- speed
- don't stop with no volume!
-
- http://onlinetonegenerator.com/
+http://onlinetonegenerator.com/
 
 http://www.aerodynes.fr/2014/04/14/a-pure-javascript-audio-waterfall/
 

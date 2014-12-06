@@ -1,4 +1,6 @@
 
+goes up to 4.41 kHz
+
 turn on turn off
 separate code
 
@@ -24,6 +26,7 @@ options:
  speed
  don't stop with no volume!
 
+ http://onlinetonegenerator.com/
 
 http://www.aerodynes.fr/2014/04/14/a-pure-javascript-audio-waterfall/
 

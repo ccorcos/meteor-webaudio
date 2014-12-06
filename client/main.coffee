@@ -1,6 +1,6 @@
 
 Template.main.rendered = ->
-  @spectogram = Spectogram('waterfall')
+  window.spectogram = Spectogram('waterfall', 60, 350)
 
 
 
@@ -15,9 +15,39 @@ window.requestAnimationFrame = window.requestAnimationFrame or
                          window.msRequestAnimationFrame
 
 
-Spectogram = (canvasId) ->
+
+
+# 440 -> 102
+# 1000 -> 232
+# 2000 -> 463
+# 3000 -> 595
+# 4000 -> 929
+# 4300 -> 998
+# 4.306640625
+
+# 1 (E)	329.63 Hz	E4
+# 2 (B)	246.94 Hz	B3
+# 3 (G)	196.00 Hz	G3
+# 4 (D)	146.83 Hz	D3
+# 5 (A)	110.00 Hz	A2
+# 6 (E)	82.41 Hz	E2
+# drop d 73.42
+
+
+Spectogram = (canvasId, minFreq=0, maxFreq=4410) ->
 
   obj = {}
+
+  # minFreq = 0
+  # maxFreq = 4410
+  k = 4410/1024
+  # frequency range
+  # maxFreq = 880
+  # minFreq = 40
+  maxFreqIndex = Math.round(maxFreq/k)
+  minFreqIndex = Math.round(minFreq/k)
+  freqRangeLength = maxFreqIndex - minFreqIndex
+
 
   hot = chroma.scale ['#000000', '#0B16B5', '#FFF782', '#EB1250'],
                      [0,          0.4,       0.68,          0.85]
@@ -25,16 +55,19 @@ Spectogram = (canvasId) ->
           .domain [0, 300]
 
   # get the context from the canvas to draw on
-  canvasElement = $("#" + canvasId)
+  $canvas = $("#" + canvasId)
   overlayElement = $("#" + canvasId + "-overlay")
+  canvas = document.getElementById(canvasId)
 
-
-  ctx = canvasElement.get()[0].getContext("2d")
+  ctx = $canvas.get()[0].getContext("2d")
 
   # create a temp canvas we use for copying
   tempCanvas = document.createElement("canvas")
+
   tempCtx = tempCanvas.getContext("2d")
-  tempCanvas.width=1024
+  canvas.width = freqRangeLength + 1
+  tempCanvas.width = freqRangeLength + 1
+  # tempCanvas.width=1024
   tempCanvas.height=256
 
   scriptNodes = {}
@@ -49,6 +82,7 @@ Spectogram = (canvasId) ->
       return node
 
   array = new Uint8Array(1024)
+  obj.array = array
 
   initAudio = (stream) ->
     context = new AudioContext()
@@ -88,6 +122,8 @@ Spectogram = (canvasId) ->
     analyser = context.createAnalyser()
     analyser.smoothingTimeConstant = 0
     analyser.fftSize = 2048
+
+    obj.anaylser = analyser
 
     # Then connect the analyser to the resampler node
     # The issue here is, that the analyser is going to get input
@@ -129,8 +165,13 @@ Spectogram = (canvasId) ->
     # Therefore I check if I didn't only get zeroes in the array, and if I did,
     # I just return.
     pwr = 0
+    # max = 0
+    # maxIndex = 0
     for i in [0...1024]
         pwr += array[i]
+        # if array[i] > max
+          # max = array[i]
+          # maxIndex = i
 
     if continuous
       # because we downsample 5, we need to throw out the empty values
@@ -148,8 +189,7 @@ Spectogram = (canvasId) ->
       if not pwr then return
 
     # copy the current canvas onto the temp canvas
-    canvas = document.getElementById("waterfall")
-    tempCtx.drawImage(canvas, 0, 0, 1024, 256)
+    tempCtx.drawImage(canvas, 0, 0, freqRangeLength+1, 256)
 
     # Each pixel is 4500/1024 = 4.39Hz wide
     # iterate over the elements from the array
@@ -159,10 +199,12 @@ Spectogram = (canvasId) ->
       # ctx.fillStyle = chroma.scales.hot()(value/300).hex()
       ctx.fillStyle = hot(value).hex()
       # draw the line on top of the canvas
-      ctx.fillRect(i, 1, 1, 1)
+      if i >= minFreqIndex and i <= maxFreqIndex
+        ctx.fillRect(i-minFreqIndex, 1, 1, 1)
 
     # draw the copied image
-    ctx.drawImage(tempCanvas, 0, 0, 1024, 256, 0, 1, 1024, 256)
+    # ctx.drawImage(tempCanvas, 0, 0, 1024, 256, 0, 1, 1024, 256)
+    ctx.drawImage(tempCanvas, 0, 0,  freqRangeLength+1, 256, 0, 1,  freqRangeLength+1, 256)
 
 
   started = false
@@ -177,7 +219,7 @@ Spectogram = (canvasId) ->
     initAudio(stream)
 
   paused = false
-  canvasElement.on 'click', (e) ->
+  $canvas.on 'click', (e) ->
     if started
       if paused
         obj.sourceNode.connect obj.filterNode

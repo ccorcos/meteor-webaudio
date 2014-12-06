@@ -34,16 +34,21 @@ window.requestAnimationFrame = window.requestAnimationFrame or
 # drop d 73.42
 
 
+
+
 Spectogram = (canvasId, minFreq=0, maxFreq=4410) ->
+  # Creates a spectogram visualizer for microphone input. This
+  # requires a call to getUserMedia which is currently only
+  # available in Chrome and Firefox.
 
-  obj = {}
 
-  # minFreq = 0
-  # maxFreq = 4410
+  # Currently the maximum frequency is 4410Hz because we downsample
+  # by a factor of 5. We store the FFT values in a 1024 bit array
+  # which gives us a resolution of 4410 Hz / 1024 pixels.
   k = 4410/1024
-  # frequency range
-  # maxFreq = 880
-  # minFreq = 40
+
+  # Given the frequency range we want to display, we need to calculate
+  # the index of the array we want to display
   maxFreqIndex = Math.round(maxFreq/k)
   minFreqIndex = Math.round(minFreq/k)
   freqRangeLength = maxFreqIndex - minFreqIndex

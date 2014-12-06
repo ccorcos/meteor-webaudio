@@ -1,6 +1,6 @@
 
 Template.main.rendered = ->
-  window.spectogram = Spectogram('waterfall', 60, 350)
+  window.spectogram = Spectogram('waterfall')#, 60, 350)
 
 
 

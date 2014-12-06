@@ -1,6 +1,8 @@
 
-change sample rate for guitar range with better resolution.
-make an equalizer
+refactor code and understand how it all works together with the sampler.
+read through a web audio tutorial as well.
+
+change the frequency range, sample rate/resolution as well
 
 
 spectogram apps:

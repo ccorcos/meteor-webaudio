@@ -119,6 +119,8 @@ Spectogram = (canvasId) ->
   #       monitoring = not monitoring
 
 
+  emptyLine = 0
+  continuous = true
   drawSpectrogram = ->
     # The analyzer is in constant underrun because it assumes
     # we have a 44.1kHz sample rate, and we downsampled 5 times to
@@ -130,7 +132,20 @@ Spectogram = (canvasId) ->
     for i in [0...1024]
         pwr += array[i]
 
-    if not pwr then return
+    if continuous
+      # because we downsample 5, we need to throw out the empty values
+      # however, this stops the whole thing when theres no audio, so check
+      # if there are 5 in a row and print it out so it looks continuous
+      if not pwr
+        emptyLine += 1
+        if emptyLine < 5
+          return
+        else
+          emptyLine = 0
+      else
+        emptyLine = 0
+    else
+      if not pwr then return
 
     # copy the current canvas onto the temp canvas
     canvas = document.getElementById("waterfall")

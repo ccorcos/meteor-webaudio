@@ -176,9 +176,17 @@ Spectogram = (canvasId) ->
     overlayElement.css 'opacity', '0'
     initAudio(stream)
 
+  paused = false
   canvasElement.on 'click', (e) ->
     if started
-      console.log "stop"
+      if paused
+        obj.sourceNode.connect obj.filterNode
+        overlayElement.css 'opacity', '0'
+        paused = false
+      else
+        obj.sourceNode.disconnect()
+        overlayElement.css 'opacity', '1'
+        paused = true
     else
       if navigator.getUserMedia
         navigator.getUserMedia {audio: true}, microphoneSuccess, microphoneError

@@ -1,8 +1,6 @@
 
 Template.main.rendered = ->
-  Spectogram('waterfall')
-
-
+  Spectogram('waterfall', 0, 360)
 
 
 
@@ -34,7 +32,9 @@ window.requestAnimationFrame = window.requestAnimationFrame or
                          window.msRequestAnimationFrame
 
 
-Spectogram = (canvasId) ->
+Spectogram = (canvasId, minFreq=0, maxFreq=4410) ->
+
+  console.log "init spectogram"
 
   # fft across 2048 samples creating 1024 frequency bins
   fftSize = 2048
@@ -67,8 +67,6 @@ Spectogram = (canvasId) ->
   # Creates a spectogram visualizer for microphone input. This
   # requires a call to getUserMedia which is currently only
   # available in Chrome and Firefox.
-  minFreq= 1000
-  maxFreq= 2000# 4410
 
   # We get 44100 Hz input from the microphone. So we'll want to subsample
   # to compute the specific frequency range we're interested in. We'll have
@@ -92,6 +90,14 @@ Spectogram = (canvasId) ->
   # compute the width of the canvas to display all these frequencies
   width = maxFreqIndex - minFreqIndex + 1
 
+
+  freq2index = (hz) ->
+    Math.round(hz/pixelResolution)
+
+  index2freq = (index) ->
+    pixelResolution*index
+
+
   # get the context from the canvas to draw on
   $canvas = $("#" + canvasId)
   $overlay = $("#" + canvasId + "-overlay")
@@ -111,6 +117,7 @@ Spectogram = (canvasId) ->
 
 
   initAudio = (stream) ->
+    console.log "init audio"
     context = new AudioContext()
     fft = new FFT(fftSize, resampleRate)
 
@@ -137,7 +144,9 @@ Spectogram = (canvasId) ->
     spectrumidx = 0
     dspwindow = new WindowFunction(fftWindow)
 
+    which = 0
     resamplerNode.onaudioprocess = (event) ->
+
       inp = event.inputBuffer.getChannelData(0)
       out = event.outputBuffer.getChannelData(0)
       l = rss.resampler(inp)
@@ -163,6 +172,7 @@ Spectogram = (canvasId) ->
       spectrumidx = (spectrumidx+1)%movingAverage
 
       # draw the spectogram!
+      console.log "draw"
       requestAnimationFrame(drawSpectrogram)
 
     # connect the audio.
@@ -191,6 +201,7 @@ Spectogram = (canvasId) ->
           sp += spectrumbuffer[j][i]
 
         value = height + gain*Math.log(sp/movingAverage*floor)
+        # console.log value
         # draw the line on top of the canvas
         ctx.fillStyle = hot(value).hex()
         ctx.fillRect(i-minFreqIndex, 1, 1, 1)
@@ -218,15 +229,18 @@ Spectogram = (canvasId) ->
   $canvas.on 'click', (e) ->
     if started
       if paused
+        console.log "unpause"
         sourceNode.connect filterNode
         $overlay.css 'opacity', '0'
         paused = false
       else
+        console.log "pause"
         sourceNode.disconnect()
         $overlay.css 'opacity', '1'
         paused = true
     else
       if navigator.getUserMedia
+        console.log "get microphone"
         navigator.getUserMedia {audio: true}, microphoneSuccess, microphoneError
       else
         alert "This app requires a microphone as input. Please try using Chrome or Firefox."

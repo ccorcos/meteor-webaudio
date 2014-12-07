@@ -1,6 +1,6 @@
 
 Template.main.rendered = ->
-  Spectogram('waterfall', 50, 380, 1024)
+  Spectogram('waterfall', 50, 380, 512)
 
 # problem with smaller frequency ranges is the FFT window is huge.
 
@@ -64,7 +64,7 @@ Spectogram = (canvasId, minFreq=0, maxFreq=4410, fftSize=2048) ->
   spectrumbuffer = []
 
   # gain and floor for the frequency visualization
-  gain = 35#90#60#20#30#45
+  gain = 45#90#60#20#30#45
   floor = 40#20#60#40
 
   # height of the canvas.
@@ -189,6 +189,14 @@ Spectogram = (canvasId, minFreq=0, maxFreq=4410, fftSize=2048) ->
           .mode 'rgb'
           .domain [0, 300]
 
+
+  E2 = freq2index 329.63
+  B = freq2index 246.94
+  G = freq2index 196.00
+  D = freq2index 146.83
+  A = freq2index 110.00
+  E = freq2index 82.41
+
   drawSpectrogram = ->
     tempCtx.drawImage(canvas, 0, 0, width, height)
     # Spectrogram clear
@@ -204,10 +212,15 @@ Spectogram = (canvasId, minFreq=0, maxFreq=4410, fftSize=2048) ->
         for j in [0...movingAverage]
           sp += spectrumbuffer[j][i]
 
+        freq = index2freq i
         value = height + gain*Math.log(sp/movingAverage*floor)
         # console.log value
         # draw the line on top of the canvas
         ctx.fillStyle = hot(value).hex()
+
+        if _.contains([E,A,D,G,B,E2], i)
+          ctx.fillStyle = '#fff'
+
         ctx.fillRect(i-minFreqIndex, 1, 1, 1)
         # if not (i % 4)
         #     #ctx.fillRect(i,height-value,3,height);

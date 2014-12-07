@@ -1,8 +1,8 @@
 
 Template.main.rendered = ->
-  Spectogram('waterfall', 0, 360)
+  Spectogram('waterfall', 50, 380, 1024)
 
-
+# problem with smaller frequency ranges is the FFT window is huge.
 
 # 440 -> 102
 # 1000 -> 232
@@ -21,6 +21,8 @@ Template.main.rendered = ->
 # drop d 73.42
 
 
+
+
 navigator.getUserMedia = navigator.getUserMedia or
                          navigator.webkitGetUserMedia or
                          navigator.mozGetUserMedia or
@@ -32,13 +34,17 @@ window.requestAnimationFrame = window.requestAnimationFrame or
                          window.msRequestAnimationFrame
 
 
-Spectogram = (canvasId, minFreq=0, maxFreq=4410) ->
+Spectogram = (canvasId, minFreq=0, maxFreq=4410, fftSize=2048) ->
 
   console.log "init spectogram"
 
   # fft across 2048 samples creating 1024 frequency bins
-  fftSize = 2048
+  # max fft size is 2048?
+  # fft size the window size. so this is the tradeoff between frequency
+  # resolution and temporal resolution
+  # fftSize = 512 #1024 #2048
   fftFreqBins = fftSize/2
+  fftSizeDouble = fftSize*2
 
   # some global scoped variables
   context = null             # audio context
@@ -58,8 +64,8 @@ Spectogram = (canvasId, minFreq=0, maxFreq=4410) ->
   spectrumbuffer = []
 
   # gain and floor for the frequency visualization
-  gain = 45
-  floor = 40
+  gain = 35#90#60#20#30#45
+  floor = 40#20#60#40
 
   # height of the canvas.
   height = 256
@@ -88,7 +94,7 @@ Spectogram = (canvasId, minFreq=0, maxFreq=4410) ->
   minFreqIndex = Math.round(minFreq/pixelResolution)
 
   # compute the width of the canvas to display all these frequencies
-  width = maxFreqIndex - minFreqIndex + 1
+  width = maxFreqIndex - minFreqIndex
 
 
   freq2index = (hz) ->
@@ -136,30 +142,29 @@ Spectogram = (canvasId, minFreq=0, maxFreq=4410) ->
     sourceNode.connect(filterNode)
 
     # Create an audio resampler. Resample, Window, FFT, smooth, and draw
-    resamplerNode = context.createScriptProcessor(4096,1,1)
-    rss = new Resampler(44100, resampleRate, 1, 4096, true)
-    ring = new Float32Array(4096)
-    fftbuffer = new Float32Array(2048)
+    resamplerNode = context.createScriptProcessor(fftSizeDouble,1,1)
+    rss = new Resampler(44100, resampleRate, 1, fftSizeDouble, true)
+    ring = new Float32Array(fftSizeDouble)
+    fftbuffer = new Float32Array(fftSize)
     idx = 0
     spectrumidx = 0
     dspwindow = new WindowFunction(fftWindow)
 
-    which = 0
     resamplerNode.onaudioprocess = (event) ->
-
+      console.log "draw"
       inp = event.inputBuffer.getChannelData(0)
       out = event.outputBuffer.getChannelData(0)
       l = rss.resampler(inp)
 
       # keep a circular buffer of the output
       for i in [0...l]
-        ring[(i+idx)%4096] = rss.outputBuffer[i]
+        ring[(i+idx)%fftSizeDouble] = rss.outputBuffer[i]
 
       # copy the oldest 2048 bytes from ring buffer to the output channel
-      for i in [0...2048]
-        fftbuffer[i] = ring[(idx+i+2048)%4096]
+      for i in [0...fftSize]
+        fftbuffer[i] = ring[(idx+i+fftSize)%fftSizeDouble]
 
-      idx = (idx+l)%4096
+      idx = (idx+l)%fftSizeDouble
 
       # Before doing our FFT, we apply a window to attenuate frequency artifacts,
       # otherwise the spectrum will bleed all over the place.
@@ -172,7 +177,6 @@ Spectogram = (canvasId, minFreq=0, maxFreq=4410) ->
       spectrumidx = (spectrumidx+1)%movingAverage
 
       # draw the spectogram!
-      console.log "draw"
       requestAnimationFrame(drawSpectrogram)
 
     # connect the audio.

@@ -34,9 +34,6 @@ window.requestAnimationFrame = window.requestAnimationFrame or
                          window.msRequestAnimationFrame
 
 
-# TODO
-# - zoom in on frequency range and set width dynamically. right now, it just rounds to the closest integer sample rate.
-
 Spectogram = (canvasId) ->
 
   # fft across 2048 samples creating 1024 frequency bins
@@ -70,7 +67,7 @@ Spectogram = (canvasId) ->
   # Creates a spectogram visualizer for microphone input. This
   # requires a call to getUserMedia which is currently only
   # available in Chrome and Firefox.
-  minFreq=0
+  minFreq= 0
   maxFreq= 2000# 4410
 
   # We get 44100 Hz input from the microphone. So we'll want to subsample
@@ -93,7 +90,7 @@ Spectogram = (canvasId) ->
   minFreqIndex = Math.round(minFreq/pixelResolution)
 
   # compute the width of the canvas to display all these frequencies
-  width = 1024 #maxFreqIndex - minFreqIndex
+  width = maxFreqIndex - minFreqIndex + 1
 
   # get the context from the canvas to draw on
   $canvas = $("#" + canvasId)
@@ -179,15 +176,15 @@ Spectogram = (canvasId) ->
           .domain [0, 300]
 
   drawSpectrogram = ->
-    tempCtx.drawImage(canvas, 0, 0, 1024, height)
+    tempCtx.drawImage(canvas, 0, 0, width, height)
     # Spectrogram clear
-    # ctx.clearRect(0, 0, 1024, height)
+    # ctx.clearRect(0, 0, width, height)
     # set the fill style
     # ctx.fillStyle=gradient
     # ctx.beginPath()
     # ctx.moveTo(0, height)
 
-    for i in [0...1024]
+    for i in [0...width]
         # draw each pixel with the specific color
         sp = 0
         for j in [0...movingAverage]
@@ -203,7 +200,7 @@ Spectogram = (canvasId) ->
         #     ctx.stroke()
 
     # draw the copied image
-    ctx.drawImage(tempCanvas, 0, 0, 1024, height, 0, 1, 1024, height);
+    ctx.drawImage(tempCanvas, 0, 0, width, height, 0, 1, width, height);
 
 
   started = false

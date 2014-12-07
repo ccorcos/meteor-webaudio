@@ -67,7 +67,7 @@ Spectogram = (canvasId) ->
   # Creates a spectogram visualizer for microphone input. This
   # requires a call to getUserMedia which is currently only
   # available in Chrome and Firefox.
-  minFreq= 0
+  minFreq= 1000
   maxFreq= 2000# 4410
 
   # We get 44100 Hz input from the microphone. So we'll want to subsample
@@ -184,7 +184,7 @@ Spectogram = (canvasId) ->
     # ctx.beginPath()
     # ctx.moveTo(0, height)
 
-    for i in [0...width]
+    for i in [minFreqIndex...(width+minFreqIndex)]
         # draw each pixel with the specific color
         sp = 0
         for j in [0...movingAverage]
@@ -193,7 +193,7 @@ Spectogram = (canvasId) ->
         value = height + gain*Math.log(sp/movingAverage*floor)
         # draw the line on top of the canvas
         ctx.fillStyle = hot(value).hex()
-        ctx.fillRect(i, 1, 1, 1)
+        ctx.fillRect(i-minFreqIndex, 1, 1, 1)
         # if not (i % 4)
         #     #ctx.fillRect(i,height-value,3,height);
         #     ctx.lineTo(i,height-value)

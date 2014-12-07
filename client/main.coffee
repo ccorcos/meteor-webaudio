@@ -33,13 +33,45 @@ window.requestAnimationFrame = window.requestAnimationFrame or
                          window.mozRequestAnimationFrame or
                          window.msRequestAnimationFrame
 
+
+# TODO
+# - zoom in on frequency range and set width dynamically. right now, it just rounds to the closest integer sample rate.
+
 Spectogram = (canvasId) ->
+
+  # fft across 2048 samples creating 1024 frequency bins
+  fftSize = 2048
+  fftFreqBins = fftSize/2
+
+  # some global scoped variables
+  context = null             # audio context
+  sourceNode = null          # microphone input node
+  filterNode = null          # low pass filtered node
+  fft = null                 # compiled fft function
+
+  # windowing function to reduce high frequency noise
+  # Many options:
+  #   DSP.HAMMING, DSP.HAN, DSP.BARTLETT, DSP.BARTLETTHANN, DSP.BLACKMAN
+  #   DSP.COSINE, DSP.GAUSS, DSP.LANCZOS, DSP.RECTANGULAR, DSP.TRIANGULAR
+  fftWindow = DSP.HAMMING    #
+
+  # moving average smoothing. set to 1 for no smoothing
+  movingAverage = 1
+  # a buffer that keeps the last frew spectra to perform a moving average
+  spectrumbuffer = []
+
+  # gain and floor for the frequency visualization
+  gain = 45
+  floor = 40
+
+  # height of the canvas.
+  height = 256
+
   # Creates a spectogram visualizer for microphone input. This
   # requires a call to getUserMedia which is currently only
   # available in Chrome and Firefox.
-
   minFreq=0
-  maxFreq=4410
+  maxFreq= 2000# 4410
 
   # We get 44100 Hz input from the microphone. So we'll want to subsample
   # to compute the specific frequency range we're interested in. We'll have
@@ -53,7 +85,7 @@ Spectogram = (canvasId) ->
   # Compute the frequency / pixel resolution. Note that we must calculate
   # all frequencies down to zero so raising the minFreq doesn't change the
   # resolution
-  pixelResolution = resampleMaxFreq/1024
+  pixelResolution = resampleMaxFreq/fftFreqBins
 
   # Given the frequency range we want to display, we need to calculate
   # the index of the 1024 element array we want to display.
@@ -61,7 +93,7 @@ Spectogram = (canvasId) ->
   minFreqIndex = Math.round(minFreq/pixelResolution)
 
   # compute the width of the canvas to display all these frequencies
-  width = maxFreqIndex - minFreqIndex + 1
+  width = 1024 #maxFreqIndex - minFreqIndex
 
   # get the context from the canvas to draw on
   $canvas = $("#" + canvasId)
@@ -76,28 +108,14 @@ Spectogram = (canvasId) ->
   tempCtx = tempCanvas.getContext("2d")
 
   canvas.width = width
-  canvas.height=256
+  canvas.height=height
   tempCanvas.width = width
-  tempCanvas.height=256
+  tempCanvas.height=height
 
 
-  # array = new Uint8Array(1024)
-
-
-  # define some variables in the outer context to be defined
-  # in initAudio but also used elsewhere
-  context = null
-  sourceNode = null
-  filterNode = null
-  fft = null
-  fftWindow = DSP.HAMMING
-  spectrumbuffer = []
-  maxAvg = 1 # smoothing
-  gain=45
-  floor = 40
   initAudio = (stream) ->
     context = new AudioContext()
-    fft = new FFT(2048, resampleRate)
+    fft = new FFT(fftSize, resampleRate)
 
     # Create an AudioNode from the input stream
     sourceNode = context.createMediaStreamSource(stream)
@@ -113,8 +131,7 @@ Spectogram = (canvasId) ->
     # pass the sourceNode into the filterNode
     sourceNode.connect(filterNode)
 
-
-    # Create an audio resampler
+    # Create an audio resampler. Resample, Window, FFT, smooth, and draw
     resamplerNode = context.createScriptProcessor(4096,1,1)
     rss = new Resampler(44100, resampleRate, 1, 4096, true)
     ring = new Float32Array(4096)
@@ -128,25 +145,30 @@ Spectogram = (canvasId) ->
       out = event.outputBuffer.getChannelData(0)
       l = rss.resampler(inp)
 
+      # keep a circular buffer of the output
       for i in [0...l]
         ring[(i+idx)%4096] = rss.outputBuffer[i]
 
-      #Now copy the oldest 2048 bytes from ring buffer to the output channel
+      # copy the oldest 2048 bytes from ring buffer to the output channel
       for i in [0...2048]
-          fftbuffer[i] = ring[(idx+i+2048)%4096]
-
+        fftbuffer[i] = ring[(idx+i+2048)%4096]
 
       idx = (idx+l)%4096
-      # Before doing our FFT, we apply a window to attenuate frequency artifacts,
-      # otherwise the spectrum will bleed all over the place:
-      dspwindow.process(fftbuffer)
 
+      # Before doing our FFT, we apply a window to attenuate frequency artifacts,
+      # otherwise the spectrum will bleed all over the place.
+      dspwindow.process(fftbuffer)
       fft.forward(fftbuffer)
+
+      # keep track of the previous spectra and introduce a new one with which
+      # we can compute a moving average
       spectrumbuffer[spectrumidx] = new Float32Array(fft.spectrum)
-      spectrumidx = (spectrumidx+1)%maxAvg
+      spectrumidx = (spectrumidx+1)%movingAverage
+
+      # draw the spectogram!
       requestAnimationFrame(drawSpectrogram)
 
-
+    # connect the audio.
     filterNode.connect(resamplerNode)
     resamplerNode.connect(context.destination)
 
@@ -156,34 +178,32 @@ Spectogram = (canvasId) ->
           .mode 'rgb'
           .domain [0, 300]
 
-  emptyLine = 0
-  continuous = true
   drawSpectrogram = ->
-    tempCtx.drawImage(canvas, 0, 0, 1024, 256)
+    tempCtx.drawImage(canvas, 0, 0, 1024, height)
     # Spectrogram clear
-    # ctx.clearRect(0, 0, 1024, 256)
+    # ctx.clearRect(0, 0, 1024, height)
     # set the fill style
     # ctx.fillStyle=gradient
     # ctx.beginPath()
-    # ctx.moveTo(0, 256)
+    # ctx.moveTo(0, height)
 
     for i in [0...1024]
         # draw each pixel with the specific color
         sp = 0
-        for j in [0...maxAvg]
+        for j in [0...movingAverage]
           sp += spectrumbuffer[j][i]
 
-        value = 256 + gain*Math.log(sp/maxAvg*floor)
+        value = height + gain*Math.log(sp/movingAverage*floor)
         # draw the line on top of the canvas
         ctx.fillStyle = hot(value).hex()
         ctx.fillRect(i, 1, 1, 1)
         # if not (i % 4)
-        #     #ctx.fillRect(i,256-value,3,256);
-        #     ctx.lineTo(i,256-value)
+        #     #ctx.fillRect(i,height-value,3,height);
+        #     ctx.lineTo(i,height-value)
         #     ctx.stroke()
 
     # draw the copied image
-    ctx.drawImage(tempCanvas, 0, 0, 1024, 256, 0, 1, 1024, 256);
+    ctx.drawImage(tempCanvas, 0, 0, 1024, height, 0, 1, 1024, height);
 
 
   started = false

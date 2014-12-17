@@ -1,0 +1,182 @@
+<html>
+<head>
+	<title>Spectogram</title>
+	<link rel="stylesheet" type="text/css" href="style.css">
+	<script src="resampler.js"></script>
+	<script src="dsp.js"></script>
+	<script src="dsp.js"></script>
+	<script src="jquery.js"></script>
+	<script src="chroma.js"></script>
+</head>
+<body>
+
+  <div class="wrapper">
+	<div class="spectogram">
+		<div id="waterfall-overlay" class="overlay">
+			  <div class="play">&#9658;</div>
+		</div>
+		<canvas id="waterfall"></canvas>
+	</div>
+  </div>
+
+
+	<script type="text/javascript">
+	var Spectogram;
+
+	navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+
+	window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.msRequestAnimationFrame;
+
+	Spectogram = function(canvasId, minFreq, maxFreq, fftSize) {
+	  var $canvas, $overlay, canvas, context, ctx, drawSpectrogram, fft, fftFreqBins, fftSizeDouble, fftWindow, filterNode, floor, freq2index, gain, height, hot, index2freq, initAudio, inputSampleRate, maxFreqIndex, microphoneError, microphoneSuccess, minFreqIndex, movingAverage, paused, pixelResolution, resampleMaxFreq, resampleRate, sourceNode, spectrumbuffer, started, subsampleFactor, tempCanvas, tempCtx, width;
+	  
+	  if (minFreq == null) {
+	    minFreq = 0;
+	  }
+	  
+	  if (maxFreq == null) {
+	    maxFreq = 4410;
+	  }
+	  
+	  if (fftSize == null) {
+	    fftSize = 2048;
+	  }
+
+	  console.log("init spectogram");
+	  fftFreqBins = fftSize / 2;
+	  fftSizeDouble = fftSize * 2;
+	  context = null;
+	  sourceNode = null;
+	  filterNode = null;
+	  fft = null;
+	  fftWindow = DSP.HAMMING;
+	  movingAverage = 1;
+	  spectrumbuffer = [];
+	  gain = 35;
+	  floor = 40;
+	  height = 256;
+	  inputSampleRate = 44100;
+	  subsampleFactor = Math.floor(44100 / maxFreq / 2);
+	  resampleRate = inputSampleRate / subsampleFactor;
+	  resampleMaxFreq = resampleRate / 2;
+	  pixelResolution = resampleMaxFreq / fftFreqBins;
+	  maxFreqIndex = Math.round(maxFreq / pixelResolution);
+	  minFreqIndex = Math.round(minFreq / pixelResolution);
+	  width = maxFreqIndex - minFreqIndex;
+	  freq2index = function(hz) {
+	    return Math.round(hz / pixelResolution);
+	  };
+	  index2freq = function(index) {
+	    return pixelResolution * index;
+	  };
+	  $canvas = $("#" + canvasId);
+	  $overlay = $("#" + canvasId + "-overlay");
+	  canvas = document.getElementById(canvasId);
+	  ctx = canvas.getContext("2d");
+	  tempCanvas = document.createElement("canvas");
+	  tempCtx = tempCanvas.getContext("2d");
+	  canvas.width = width;
+	  canvas.height = height;
+	  tempCanvas.width = width;
+	  tempCanvas.height = height;
+	  initAudio = function(stream) {
+	    var dspwindow, fftbuffer, idx, resamplerNode, ring, rss, spectrumidx;
+	    console.log("init audio");
+	    context = new AudioContext();
+	    fft = new FFT(fftSize, resampleRate);
+	    sourceNode = context.createMediaStreamSource(stream);
+	    filterNode = context.createBiquadFilter();
+	    filterNode.type = filterNode.LOWPASS;
+	    filterNode.frequency.value = 0.95 * maxFreq;
+	    filterNode.Q.value = 1.5;
+	    filterNode.gain.value = 0;
+	    sourceNode.connect(filterNode);
+	    resamplerNode = context.createScriptProcessor(fftSizeDouble, 1, 1);
+	    rss = new Resampler(44100, resampleRate, 1, fftSizeDouble, true);
+	    ring = new Float32Array(fftSizeDouble);
+	    fftbuffer = new Float32Array(fftSize);
+	    idx = 0;
+	    spectrumidx = 0;
+	    dspwindow = new WindowFunction(fftWindow);
+	    resamplerNode.onaudioprocess = function(event) {
+	      var i, inp, l, out, _i, _j;
+	      console.log("draw");
+	      inp = event.inputBuffer.getChannelData(0);
+	      out = event.outputBuffer.getChannelData(0);
+	      l = rss.resampler(inp);
+	      for (i = _i = 0; 0 <= l ? _i < l : _i > l; i = 0 <= l ? ++_i : --_i) {
+	        ring[(i + idx) % fftSizeDouble] = rss.outputBuffer[i];
+	      }
+	      for (i = _j = 0; 0 <= fftSize ? _j < fftSize : _j > fftSize; i = 0 <= fftSize ? ++_j : --_j) {
+	        fftbuffer[i] = ring[(idx + i + fftSize) % fftSizeDouble];
+	      }
+	      idx = (idx + l) % fftSizeDouble;
+	      dspwindow.process(fftbuffer);
+	      fft.forward(fftbuffer);
+	      spectrumbuffer[spectrumidx] = new Float32Array(fft.spectrum);
+	      spectrumidx = (spectrumidx + 1) % movingAverage;
+	      requestAnimationFrame(drawSpectrogram);
+	    };
+	    filterNode.connect(resamplerNode);
+	    resamplerNode.connect(context.destination);
+	  };
+	  hot = chroma.scale(['#000000', '#0B16B5', '#FFF782', '#EB1250'], [0, 0.4, 0.68, 0.85]).mode('rgb').domain([0, 300]);
+	  drawSpectrogram = function() {
+	    var i, j, sp, value, _i, _j, _ref;
+	    tempCtx.drawImage(canvas, 0, 0, width, height);
+	    for (i = _i = minFreqIndex, _ref = width + minFreqIndex; minFreqIndex <= _ref ? _i < _ref : _i > _ref; i = minFreqIndex <= _ref ? ++_i : --_i) {
+	      sp = 0;
+	      for (j = _j = 0; 0 <= movingAverage ? _j < movingAverage : _j > movingAverage; j = 0 <= movingAverage ? ++_j : --_j) {
+	        sp += spectrumbuffer[j][i];
+	      }
+	      value = height + gain * Math.log(sp / movingAverage * floor);
+	      ctx.fillStyle = hot(value).hex();
+	      ctx.fillRect(i - minFreqIndex, 1, 1, 1);
+	    }
+	    ctx.drawImage(tempCanvas, 0, 0, width, height, 0, 1, width, height);
+	  };
+	  started = false;
+	  microphoneError = function(event) {
+	    console.log(event);
+	    if (event.name === "PermissionDeniedError") {
+	      alert("This app requires a microphone as input. Please adjust your privacy settings.");
+	    }
+	  };
+	  microphoneSuccess = function(stream) {
+	    started = true;
+	    $overlay.css('opacity', '0');
+	    initAudio(stream);
+	  };
+	  paused = false;
+	  $canvas.on('click', function(e) {
+	    if (started) {
+	      if (paused) {
+	        console.log("unpause");
+	        sourceNode.connect(filterNode);
+	        $overlay.css('opacity', '0');
+	        paused = false;
+	      } else {
+	        console.log("pause");
+	        sourceNode.disconnect();
+	        $overlay.css('opacity', '1');
+	        paused = true;
+	      }
+	    } else {
+	      if (navigator.getUserMedia) {
+	        console.log("get microphone");
+	        navigator.getUserMedia({
+	          audio: true
+	        }, microphoneSuccess, microphoneError);
+	      } else {
+	        alert("This app requires a microphone as input. Please try using Chrome or Firefox.");
+	      }
+	    }
+	  });
+	};
+
+
+	Spectogram('waterfall')
+	</script>
+
+</body>
+</html>

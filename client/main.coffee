@@ -1,6 +1,7 @@
 
 Template.main.rendered = ->
-  Spectogram('waterfall', 50, 380, 1024)
+  Spectogram('waterfall')
+  # Spectogram('waterfall', 50, 380, 1024)
 
 # problem with smaller frequency ranges is the FFT window is huge.
 

@@ -24,16 +24,19 @@ Template.main.rendered = ->
 
 
 
-navigator.getUserMedia = navigator.getUserMedia or
-                         navigator.webkitGetUserMedia or
-                         navigator.mozGetUserMedia or
-                         navigator.msGetUserMedia
+# navigator.getUserMedia = navigator.getUserMedia or
+#                          navigator.webkitGetUserMedia or
+#                          navigator.mozGetUserMedia or
+#                          navigator.msGetUserMedia
 
-window.requestAnimationFrame = window.requestAnimationFrame or
-                         window.webkitRequestAnimationFrame or
-                         window.mozRequestAnimationFrame or
-                         window.msRequestAnimationFrame
+# window.requestAnimationFrame = window.requestAnimationFrame or
+#                          window.webkitRequestAnimationFrame or
+#                          window.mozRequestAnimationFrame or
+#                          window.msRequestAnimationFrame
 
+
+navigator.getUserMedia = navigator.mozGetUserMedia
+window.requestAnimationFrame = window.mozRequestAnimationFrame
 
 Spectogram = (canvasId, minFreq=0, maxFreq=4410, fftSize=2048) ->
 
@@ -192,12 +195,6 @@ Spectogram = (canvasId, minFreq=0, maxFreq=4410, fftSize=2048) ->
 
   drawSpectrogram = ->
     tempCtx.drawImage(canvas, 0, 0, width, height)
-    # Spectrogram clear
-    # ctx.clearRect(0, 0, width, height)
-    # set the fill style
-    # ctx.fillStyle=gradient
-    # ctx.beginPath()
-    # ctx.moveTo(0, height)
 
     for i in [minFreqIndex...(width+minFreqIndex)]
         # draw each pixel with the specific color
@@ -210,10 +207,6 @@ Spectogram = (canvasId, minFreq=0, maxFreq=4410, fftSize=2048) ->
         # draw the line on top of the canvas
         ctx.fillStyle = hot(value).hex()
         ctx.fillRect(i-minFreqIndex, 1, 1, 1)
-        # if not (i % 4)
-        #     #ctx.fillRect(i,height-value,3,height);
-        #     ctx.lineTo(i,height-value)
-        #     ctx.stroke()
 
     # draw the copied image
     ctx.drawImage(tempCanvas, 0, 0, width, height, 0, 1, width, height);
@@ -248,4 +241,4 @@ Spectogram = (canvasId, minFreq=0, maxFreq=4410, fftSize=2048) ->
         console.log "get microphone"
         navigator.getUserMedia {audio: true}, microphoneSuccess, microphoneError
       else
-        alert "This app requires a microphone as input. Please try using Chrome or Firefox."
+        alert "Please try using Firefox."
